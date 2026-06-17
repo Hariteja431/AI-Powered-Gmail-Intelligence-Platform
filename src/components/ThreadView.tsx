@@ -1,0 +1,265 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Markdown from 'react-markdown';
+
+export default function ThreadView({ threadId, onClose }: { threadId: string, onClose: () => void }) {
+  const [thread, setThread] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const [instruction, setInstruction] = useState('');
+  const [draft, setDraft] = useState('');
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchThread = async () => {
+      try {
+        const res = await fetch(`/api/threads/${threadId}`);
+        const data = await res.json();
+        setThread(data.thread);
+        setMessages(data.messages || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchThread();
+  }, [threadId]);
+
+  const generateSummary = async () => {
+    setIsGeneratingSummary(true);
+    try {
+      const res = await fetch(`/api/threads/${threadId}`, { method: 'POST' });
+      const data = await res.json();
+      setSummary(data.summary);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  const handleDraft = async () => {
+    setIsDrafting(true);
+    setSendSuccess(false);
+    try {
+      const res = await fetch('/api/compose/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId, instruction })
+      });
+      const data = await res.json();
+      if (data.draft) setDraft(data.draft);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDrafting(false);
+    }
+  };
+
+  const handleSend = async () => {
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/compose/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId, body: draft })
+      });
+      const data = await res.json();
+      if (data.result) {
+        setSendSuccess(true);
+        setDraft('');
+        setInstruction('');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-white">
+        <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    );
+  }
+
+  if (!thread) {
+    return <div className="flex-1 flex items-center justify-center bg-white text-gray-500">Thread not found</div>;
+  }
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-white relative">
+      
+      {/* Header */}
+      <div className="h-16 px-4 border-b border-gray-100 flex items-center gap-4 bg-white shrink-0 sticky top-0 z-10">
+        <button 
+          onClick={onClose} 
+          className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+          title="Back to inbox"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </button>
+        <h2 className="text-xl font-medium text-gray-900 truncate pr-4">{thread.subject}</h2>
+        {thread.category && (
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded bg-gray-100 text-gray-500">
+            {thread.category}
+          </span>
+        )}
+      </div>
+      
+      <div className="flex-1 overflow-y-auto bg-white">
+        <div className="max-w-4xl mx-auto py-6 px-4 md:px-8 space-y-8">
+          
+          {/* AI Summary Card */}
+          <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 shadow-sm">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                AI Summary
+              </h3>
+              {!summary && (
+                <button 
+                  onClick={generateSummary}
+                  disabled={isGeneratingSummary}
+                  className="text-sm bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center shadow-sm"
+                >
+                  {isGeneratingSummary && (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                  {isGeneratingSummary ? 'Analyzing Thread...' : 'Summarize Thread'}
+                </button>
+              )}
+            </div>
+            {summary ? (
+              <div className="text-sm text-gray-800 prose prose-blue max-w-none">
+                <Markdown>{summary}</Markdown>
+              </div>
+            ) : (
+              <p className="text-sm text-blue-700/70">Generate an AI summary to quickly catch up on this thread.</p>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div className="space-y-6">
+            {messages.map((msg, i) => (
+              <div key={msg.id} className="bg-white">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold uppercase shrink-0">
+                      {(msg.from_name || msg.from_email).charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 leading-none mb-1">{msg.from_name || msg.from_email.split('@')[0]}</p>
+                      <p className="text-xs text-gray-500">&lt;{msg.from_email}&gt;</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 font-medium">{new Date(msg.internal_date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                </div>
+                
+                <div className="text-sm text-gray-800 overflow-x-auto pl-13 pb-6 border-b border-gray-100">
+                  {msg.body_html ? (
+                    <iframe 
+                      title={`email-body-${msg.id}`}
+                      srcDoc={msg.body_html}
+                      className="w-full min-h-[500px] border-none bg-white"
+                      sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                    />
+                  ) : (
+                    <div className="whitespace-pre-wrap break-words">{msg.body_plain || 'No body available.'}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Reply Composer */}
+      <div className="border-t border-gray-200 bg-white p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="max-w-4xl mx-auto">
+          {sendSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl text-sm mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              Reply sent successfully via Gmail!
+            </div>
+          )}
+          
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+              </div>
+              <input 
+                type="text" 
+                placeholder="Instruct AI to draft a reply (e.g. 'Say yes and suggest meeting Tuesday at 2pm')" 
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm bg-gray-50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)}
+                disabled={isDrafting || isSending}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && instruction && !isDrafting && !isSending) {
+                    handleDraft();
+                  }
+                }}
+              />
+            </div>
+            <button 
+              onClick={handleDraft}
+              disabled={isDrafting || isSending || !instruction}
+              className="bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl text-sm font-medium disabled:opacity-50 transition-all shadow-sm flex items-center shrink-0"
+            >
+              {isDrafting ? 'Drafting...' : 'Generate Draft'}
+            </button>
+          </div>
+
+          {draft && (
+            <div className="mt-4 animate-in slide-in-from-bottom-2 fade-in duration-200">
+              <textarea 
+                className="w-full border border-gray-300 rounded-xl p-4 text-sm min-h-[200px] font-sans bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                disabled={isSending}
+              />
+              <div className="flex justify-between items-center mt-3">
+                <p className="text-xs text-gray-500">You can edit the AI draft above before sending.</p>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setDraft('')}
+                    disabled={isSending}
+                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                  >
+                    Discard
+                  </button>
+                  <button 
+                    onClick={handleSend}
+                    disabled={isSending || !draft}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 transition-all flex items-center"
+                  >
+                    {isSending ? 'Sending...' : 'Send via Gmail'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
