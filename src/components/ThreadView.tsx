@@ -17,6 +17,39 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<'reply' | 'chat'>('reply');
+  const [chatMessages, setChatMessages] = useState<{role: 'user'|'assistant', content: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  const handleChatSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsChatLoading(true);
+
+    try {
+      const threadContext = messages.map(m => `From: ${m.from_name || m.from_email}\nText: ${m.body_plain}`).join('\n\n');
+      
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMsg, history: chatMessages, threadContext })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+    } catch (e: any) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}` }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchThread = async () => {
       try {
@@ -236,71 +269,144 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
         </div>
       </div>
 
-      {/* AI Reply Composer */}
-      <div className="border-t border-gray-200 bg-white p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div className="max-w-4xl mx-auto">
-          {sendSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl text-sm mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-              Reply sent successfully via Gmail!
-            </div>
-          )}
-          
-          <div className="flex gap-3">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-              </div>
-              <input 
-                type="text" 
-                placeholder="Instruct AI to draft a reply (e.g. 'Say yes and suggest meeting Tuesday at 2pm')" 
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm bg-gray-50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
-                value={instruction}
-                onChange={e => setInstruction(e.target.value)}
-                disabled={isDrafting || isSending}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && instruction && !isDrafting && !isSending) {
-                    handleDraft();
-                  }
-                }}
-              />
-            </div>
-            <button 
-              onClick={handleDraft}
-              disabled={isDrafting || isSending || !instruction}
-              className="bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl text-sm font-medium disabled:opacity-50 transition-all shadow-sm flex items-center shrink-0"
-            >
-              {isDrafting ? 'Drafting...' : 'Generate Draft'}
-            </button>
-          </div>
+      {/* Bottom Action Area */}
+      <div className="border-t border-gray-200 bg-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 px-4 pt-2 max-w-4xl mx-auto w-full">
+          <button 
+            onClick={() => setActiveTab('reply')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'reply' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Reply with AI
+          </button>
+          <button 
+            onClick={() => setActiveTab('chat')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'chat' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            Chat about Email
+          </button>
+        </div>
 
-          {draft && (
-            <div className="mt-4 animate-in slide-in-from-bottom-2 fade-in duration-200">
-              <textarea 
-                className="w-full border border-gray-300 rounded-xl p-4 text-sm min-h-[200px] font-sans bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-y"
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                disabled={isSending}
-              />
-              <div className="flex justify-between items-center mt-3">
-                <p className="text-xs text-gray-500">You can edit the AI draft above before sending.</p>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setDraft('')}
-                    disabled={isSending}
-                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
-                  >
-                    Discard
-                  </button>
-                  <button 
-                    onClick={handleSend}
-                    disabled={isSending || !draft}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 transition-all flex items-center"
-                  >
-                    {isSending ? 'Sending...' : 'Send via Gmail'}
-                  </button>
+        {/* Tab Content */}
+        <div className="p-4 max-w-4xl mx-auto w-full">
+          {activeTab === 'reply' ? (
+            <>
+              {sendSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl text-sm mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                  Reply sent successfully via Gmail!
                 </div>
+              )}
+              
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Instruct AI to draft a reply (e.g. 'Say yes and suggest meeting Tuesday at 2pm')" 
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm bg-gray-50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                    value={instruction}
+                    onChange={e => setInstruction(e.target.value)}
+                    disabled={isDrafting || isSending}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && instruction && !isDrafting && !isSending) {
+                        handleDraft();
+                      }
+                    }}
+                  />
+                </div>
+                <button 
+                  onClick={handleDraft}
+                  disabled={isDrafting || isSending || !instruction}
+                  className="bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-xl text-sm font-medium disabled:opacity-50 transition-all shadow-sm flex items-center shrink-0"
+                >
+                  {isDrafting ? 'Drafting...' : 'Generate Draft'}
+                </button>
               </div>
+
+              {draft && (
+                <div className="mt-4 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                  <textarea 
+                    className="w-full border border-gray-300 rounded-xl p-4 text-sm min-h-[200px] font-sans bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-y"
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    disabled={isSending}
+                  />
+                  <div className="flex justify-between items-center mt-3">
+                    <p className="text-xs text-gray-500">You can edit the AI draft above before sending.</p>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setDraft('')}
+                        disabled={isSending}
+                        className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                      >
+                        Discard
+                      </button>
+                      <button 
+                        onClick={handleSend}
+                        disabled={isSending || !draft}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm disabled:opacity-50 transition-all flex items-center"
+                      >
+                        {isSending ? 'Sending...' : 'Send via Gmail'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col max-h-[40vh] min-h-[300px]">
+              <div className="flex-1 overflow-y-auto mb-3 space-y-4 pr-2">
+                {chatMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm py-8">
+                    <svg className="w-12 h-12 mb-3 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <p className="font-medium text-gray-900 mb-1">Chat about this email thread</p>
+                    <p>Ask questions, request translations, or get clarifications.</p>
+                  </div>
+                ) : (
+                  chatMessages.map((m, i) => (
+                    <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[85%] rounded-2xl p-3.5 text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-gray-100 text-gray-900 rounded-bl-none shadow-sm'}`}>
+                        {m.role === 'assistant' ? (
+                          <div className="prose prose-sm max-w-none text-gray-900">
+                            <Markdown>{m.content}</Markdown>
+                          </div>
+                        ) : (
+                          m.content
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex items-start">
+                    <div className="bg-gray-100 shadow-sm rounded-2xl rounded-bl-none p-3.5 text-sm text-gray-500 flex items-center">
+                      <svg className="animate-spin mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      Thinking...
+                    </div>
+                  </div>
+                )}
+              </div>
+              <form onSubmit={handleChatSend} className="flex gap-2 shrink-0">
+                <input
+                  type="text"
+                  className="flex-1 border border-gray-300 rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm text-gray-900 transition-all"
+                  placeholder="Ask a question about this email..."
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  disabled={isChatLoading}
+                />
+                <button 
+                  type="submit"
+                  disabled={!chatInput.trim() || isChatLoading}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center w-11 h-11"
+                >
+                  <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+              </form>
             </div>
           )}
         </div>
