@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 
 export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId: string) => void }) {
@@ -7,6 +7,14 @@ export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const hasAutoIndexed = useRef(false);
+
+  useEffect(() => {
+    if (!hasAutoIndexed.current) {
+      hasAutoIndexed.current = true;
+      handleBackfill(true);
+    }
+  }, []);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +46,20 @@ export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId
     }
   };
 
-  const handleBackfill = async () => {
+  const handleBackfill = async (isAuto = false) => {
     setIsBackfilling(true);
     try {
       const res = await fetch('/api/embeddings/backfill', { method: 'POST' });
       const data = await res.json();
-      alert(data.message);
+      if (!isAuto) {
+        if (data.count === 0 && !data.hasMore) {
+          alert('All emails are already indexed!');
+        } else {
+          alert(`Successfully indexed ${data.count} emails! Click again to index the next batch.`);
+        }
+      }
     } catch (e) {
-      alert('Error backfilling');
+      if (!isAuto) alert('Error backfilling');
     } finally {
       setIsBackfilling(false);
     }
@@ -59,7 +73,7 @@ export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId
           Inbox AI
         </h2>
         <button 
-          onClick={handleBackfill}
+          onClick={() => handleBackfill(false)}
           disabled={isBackfilling}
           className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded disabled:opacity-50"
         >
@@ -69,9 +83,15 @@ export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-10 text-sm">
-            <p>Ask me anything about your emails.</p>
-            <p className="mt-2 text-xs">Remember to "Index Emails" first so I can search them!</p>
+          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 px-6">
+            <svg className="w-16 h-16 mb-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Inbox AI Assistant</h3>
+            <p className="text-sm mb-4">Ask me anything about your emails. I use AI to search and find answers based on your indexed messages.</p>
+            <div className="bg-indigo-50 text-indigo-800 p-3 rounded-lg text-xs max-w-sm text-left border border-indigo-100 shadow-sm mt-2">
+              <span className="font-semibold block mb-1">💡 How Indexing works:</span>
+              To save your API tokens, we only automatically index your first 20 emails. 
+              If you want the AI to search deeper into your inbox history, just click the <strong>"Index Emails"</strong> button above to load the next batch of 20 emails!
+            </div>
           </div>
         ) : (
           messages.map((m, i) => (
