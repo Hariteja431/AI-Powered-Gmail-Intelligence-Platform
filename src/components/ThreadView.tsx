@@ -216,17 +216,19 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
                   </div>
                 )}
                 
-                <div className="text-sm text-gray-800 overflow-x-auto pl-13 pb-6 border-b border-gray-100">
-                  {msg.body_html ? (
-                    <iframe 
-                      title={`email-body-${msg.id}`}
-                      srcDoc={msg.body_html}
-                      className="w-full min-h-[500px] border-none bg-white"
-                      sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-                    />
-                  ) : (
-                    <div className="whitespace-pre-wrap break-words">{msg.body_plain || 'No body available.'}</div>
-                  )}
+                <div className="mt-3 md:ml-13 mb-6">
+                  <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm w-full">
+                    {msg.body_html ? (
+                      <iframe 
+                        title={`email-body-${msg.id}`}
+                        srcDoc={`<meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; word-wrap: break-word; } img { max-width: 100% !important; height: auto !important; } table { max-width: 100% !important; box-sizing: border-box; }</style>${msg.body_html}`}
+                        className="w-full min-h-[500px] border-none bg-white"
+                        sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap break-words p-4 text-sm text-gray-800">{msg.body_plain || 'No body available.'}</div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
