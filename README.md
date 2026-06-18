@@ -22,6 +22,19 @@ Built as a submission for the **Repeatless AI Automation Executive Technical Ass
 
 ---
 
+## Evaluator Notes & Testing
+
+> [!WARNING]
+> **Google OAuth "Unverified App" Screen**
+> Because this application is in "Production" mode without completing Google's 3-day business verification process (which requires a registered business domain), you will encounter a warning screen that says "Google hasn't verified this app" when attempting to log in. 
+> 
+> **To proceed:**
+> 1. Click **Advanced** at the bottom of the warning screen.
+> 2. Click **Go to [App Name] (unsafe)**.
+> 3. Click **Continue** to grant the requested Gmail permissions.
+
+---
+
 ## Local Setup Instructions
 
 ### 1. Clone the repository
