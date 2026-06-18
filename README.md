@@ -10,15 +10,15 @@ Built as a submission for the **Repeatless AI Automation Executive Technical Ass
 - **AI Categorization**: Automatically groups emails into Newsletters, Job/Recruitment, Finance, Notifications, etc.
 - **Smart Summarization**: Gemini-powered summaries for long, complex email threads.
 - **Context-Aware Drafting**: Generates professional email replies based on short user prompts, preserving standard SMTP `In-Reply-To` and `References` headers for robust threading.
-- **Inbox AI Agent**: An intelligent conversational agent that uses dense vector embeddings (NVIDIA NIM) and pgvector semantic search to exclusively answer questions based on your synced emails, complete with source attribution.
+- **Inbox AI Agent**: An intelligent conversational agent that uses dense vector embeddings and pgvector semantic search to exclusively answer questions based on your synced emails, complete with source attribution.
 - **Newsletter Deduplication**: Semantically identifies and deduplicates repeating news stories across various newsletter subscriptions.
 
 ## Tech Stack
 
-- **Frontend & Backend**: Next.js (App Router), React, Tailwind CSS
+- **Frontend & Backend**: Next.js 14 (App Router), React, Tailwind CSS
 - **Database**: Supabase (PostgreSQL + pgvector)
-- **AI Models**: Google Gemini API (Reasoning/Generation) & NVIDIA NIM API (Embeddings)
-- **Authentication**: NextAuth.js (Google Provider)
+- **AI Models**: Google Gemini API (Reasoning/Generation)
+- **Authentication**: Supabase Auth (Google Provider)
 
 ---
 
@@ -36,28 +36,16 @@ npm install
 ```
 
 ### 3. Environment Variables
-Create a `.env.local` file in the root directory and populate it with the following keys. **Do not commit your secrets.**
+Create a `.env.local` file in the root directory and populate it based on the provided `.env.example` file. **Do not commit your actual secrets.**
 
-```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-# Google OAuth Credentials (for Gmail API integration)
-GOOGLE_CLIENT_ID=your_google_oauth_client_id
-GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
-
-# AI API Keys
-GEMINI_API_KEY=your_google_gemini_api_key
-NVIDIA_API_KEY=your_nvidia_nim_api_key
-
-# NextAuth Configuration
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_random_nextauth_secret_string
-
-# Encryption key for securing stored Google tokens
-TOKEN_ENCRYPTION_KEY=a_32_character_random_string
-```
+**Required Environment Variables:**
+- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: Your Google Cloud Console OAuth credentials required to request Gmail API scopes.
+- `GOOGLE_REDIRECT_URI`: The callback URI for OAuth (e.g., `http://localhost:3000/api/auth/callback/google`).
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous key for client-side Auth.
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase secret service role key for bypassing RLS on server routes.
+- `TOKEN_ENCRYPTION_KEY`: A completely random 32-character string. This is used strictly by the server to symmetrically encrypt/decrypt the sensitive Google OAuth Refresh Tokens before storing them in the Supabase database.
+- `GEMINI_API_KEYS`: A comma-separated list of Google Gemini API keys used for generation, chunking, and reasoning workflows.
 
 ### 4. Database Setup
 You need to set up the Supabase PostgreSQL database schema. 
@@ -73,13 +61,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Folder Structure
+## Folder Structure & Architecture
 
-- `/src/app`: Next.js App Router structure. Contains frontend pages (`page.tsx`) and API routes (`/api/auth`, `/api/chat`, `/api/sync`, etc.).
-- `/src/components`: Reusable React components (`Dashboard.tsx`, `ThreadView.tsx`, `ChatAgent.tsx`).
-- `/src/lib`: Core utility functions and integrations:
-  - `/ai`: Wrappers for Gemini and NVIDIA NIM APIs (summarization, categorization, embeddings).
-  - `/gmail`: OAuth handling, message parsing, thread sending, and the incremental sync worker logic.
-  - `/supabase`: Supabase clients for server and client side.
-- `/supabase_schema.sql` & `/create_match_rpc.sql`: Database migration scripts.
-- `/Architecture.md`: A detailed breakdown of the system architecture, design decisions, and AI integration strategies.
+The application is built using a monolithic serverless pattern.
+
+- `/src/app`: Next.js App Router structure. 
+  - Contains frontend pages like `page.tsx` and `layout.tsx`.
+  - `/api`: Contains all backend serverless functions acting securely between the client and external services (e.g., `/api/auth`, `/api/chat`, `/api/sync`, `/api/compose`).
+- `/src/components`: Reusable React Client Components representing the UI. Notable files include `Dashboard.tsx` (the main layout), `ThreadView.tsx` (reading interface), and `ChatAgent.tsx` (the RAG interface).
+- `/src/lib`: Core utility functions, SDK wrappers, and complex backend logic separated from route handlers:
+  - `/ai`: Specialized wrappers around the Google Gemini APIs responsible for summarization, auto-categorization, generation, and embedding.
+  - `/gmail`: Handlers for OAuth flows, fetching raw messages from the Gmail API, parsing MIME types, and managing incremental sync status.
+  - `/supabase`: Configured Supabase clients specifically tailored for both server-side execution and client-side access.
+- `/supabase_schema.sql` & `/create_match_rpc.sql`: The raw SQL migration scripts required to spin up the correct Postgres schemas.
+- `/Architecture.md`: A deep-dive design document explicitly breaking down the system architecture, database modeling choices, RAG pipeline construction, and API scaling strategies.
