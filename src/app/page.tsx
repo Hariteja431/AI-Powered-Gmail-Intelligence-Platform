@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Dashboard from '@/components/Dashboard';
-
 export default async function Home() {
   const cookieStore = await cookies();
   const userId = cookieStore.get('user_id')?.value;
@@ -29,34 +28,8 @@ export default async function Home() {
     <div className="h-screen w-screen overflow-hidden bg-white text-gray-900 flex flex-col font-sans">
       {user ? (
         <>
-          {/* Top Navbar */}
-          <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white shrink-0 shadow-sm z-10">
-            <div className="flex items-center gap-3">
-              {/* Logo removed as requested */}
-            </div>
-            
-            {/* Search Placeholder */}
-            <div className="flex-1 max-w-3xl px-8 hidden md:block">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </div>
-                <input type="text" className="block w-full pl-11 pr-4 py-2.5 border-transparent rounded-full bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all" placeholder="Search emails (coming soon...)" readOnly />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="text-sm font-medium text-gray-600 hidden sm:block">{user.email}</div>
-              <form action={logout}>
-                <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-semibold">
-                  Sign Out
-                </button>
-              </form>
-            </div>
-          </header>
-          
           {/* Main App Area */}
-          <main className="flex-1 flex overflow-hidden bg-gray-50">
+          <main className="flex-1 flex flex-col overflow-hidden bg-gray-50 h-screen w-screen">
             <Dashboard user={user} />
           </main>
         </>

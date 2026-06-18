@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     .select('*')
     .eq('user_id', userId)
     .order('last_message_at', { ascending: false })
-    .limit(50);
+    .limit(300);
 
   if (category && category !== 'All') {
     if (category === 'Uncategorized') {

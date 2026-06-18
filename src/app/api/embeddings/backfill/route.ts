@@ -19,28 +19,33 @@ export async function POST() {
 
   try {
     // 1. Find messages for this user that DO NOT have chunks yet
-    // Fetch 100 recent messages
-    const { data: messages } = await supabase
+    // Fetch all message IDs efficiently
+    const { data: allMsgIds } = await supabase
       .from('messages')
-      .select('id, body_plain, subject, from_name, from_email, internal_date')
-      .eq('user_id', userId)
-      .order('internal_date', { ascending: false })
-      .limit(100);
+      .select('id')
+      .eq('user_id', userId);
 
-    if (!messages || messages.length === 0) return NextResponse.json({ message: 'No messages found.' });
-
-    // Find which of these messages are already embedded
-    const messageIds = messages.map(m => m.id);
-    const { data: existingChunks } = await supabase
+    const { data: existingChunkIds } = await supabase
       .from('email_chunks')
       .select('message_id')
-      .in('message_id', messageIds);
+      .eq('user_id', userId);
 
-    const embeddedMessageIds = new Set(existingChunks?.map(c => c.message_id) || []);
-    const messagesToEmbed = messages.filter(m => !embeddedMessageIds.has(m.id)).slice(0, BATCH_SIZE);
+    const embeddedMessageIds = new Set(existingChunkIds?.map(c => c.message_id) || []);
+    const unembeddedIds = allMsgIds?.map(m => m.id).filter(id => !embeddedMessageIds.has(id)) || [];
 
-    if (messagesToEmbed.length === 0) {
-      return NextResponse.json({ message: 'All recent messages are already embedded.', count: 0, hasMore: false });
+    if (unembeddedIds.length === 0) {
+      return NextResponse.json({ message: 'All messages are already embedded.', count: 0, hasMore: false });
+    }
+
+    const idsToFetch = unembeddedIds.slice(0, BATCH_SIZE);
+    
+    const { data: messagesToEmbed } = await supabase
+      .from('messages')
+      .select('id, body_plain, subject, from_name, from_email, internal_date')
+      .in('id', idsToFetch);
+
+    if (!messagesToEmbed || messagesToEmbed.length === 0) {
+      return NextResponse.json({ message: 'Failed to fetch message details.', count: 0, hasMore: false });
     }
 
     // 2. Chunk the text

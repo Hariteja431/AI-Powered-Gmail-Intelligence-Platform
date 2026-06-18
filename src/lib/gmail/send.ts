@@ -82,3 +82,39 @@ export async function sendReply(userId: string, threadId: string, replyBody: str
 
   return res.data;
 }
+
+export async function sendNewEmail(userId: string, to: string, subject: string, body: string) {
+  const { data: user } = await supabase
+    .from('users')
+    .select('email, google_access_token, google_refresh_token')
+    .eq('id', userId)
+    .single();
+
+  if (!user) throw new Error('User not found');
+
+  const accessToken = decrypt(user.google_access_token);
+  const refreshToken = user.google_refresh_token ? decrypt(user.google_refresh_token) : undefined;
+  const auth = getAuthenticatedClient(accessToken, refreshToken);
+  const gmail = google.gmail({ version: 'v1', auth });
+
+  const emailLines = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    '',
+    body
+  ];
+
+  const raw = Buffer.from(emailLines.join('\r\n'))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const res = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw }
+  });
+
+  return res.data;
+}

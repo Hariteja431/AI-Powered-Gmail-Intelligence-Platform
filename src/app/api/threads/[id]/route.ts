@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { summarizeThread } from '@/lib/ai/summarize';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const userId = cookieStore.get('user_id')?.value;
 
@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   return NextResponse.json({ thread, messages });
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   try {
     const summary = await summarizeThread(resolvedParams.id);

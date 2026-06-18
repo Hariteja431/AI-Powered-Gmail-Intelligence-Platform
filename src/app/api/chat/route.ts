@@ -39,15 +39,22 @@ export async function POST(request: Request) {
       return `--- Email snippet from ${chunk.metadata?.date ? new Date(chunk.metadata.date).toLocaleString() : 'Unknown'} ---\nSubject: ${chunk.metadata?.subject || 'Unknown'}\nFrom: ${chunk.metadata?.from || 'Unknown'}\nText: ${chunk.chunk_text}\n-------------------`;
     }).join('\n\n');
 
+    const historyText = history && history.length > 0 
+      ? history.map((m: any) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')
+      : 'No previous conversation.';
+
     const prompt = `
 You are an intelligent email assistant. Answer the user's question using ONLY the provided email context below. 
 If the context does not contain the answer, politely say that you don't have enough information from the synced emails.
 Always be concise, professional, and cite the emails you use (e.g., "According to the email from X on Date...").
 
+Previous Conversation History:
+${historyText}
+
 Email Context:
 ${contextText || 'No relevant emails found.'}
 
-User's Question: "${query}"
+User's Current Question: "${query}"
 `;
 
     // 4. Generate AI Answer using Fallback wrapper
@@ -57,9 +64,28 @@ User's Question: "${query}"
 
     const answer = response.response.text();
 
+    // 5. Enhance sources with thread_id for frontend clickability
+    let sources = chunks?.map((c: any) => ({ ...c.metadata, message_id: c.message_id })) || [];
+    
+    if (sources.length > 0) {
+      const messageIds = [...new Set(sources.map((s: any) => s.message_id))];
+      const { data: messages } = await supabase
+        .from('messages')
+        .select('id, thread_id')
+        .in('id', messageIds);
+        
+      if (messages) {
+        const messageToThreadMap = new Map(messages.map(m => [m.id, m.thread_id]));
+        sources = sources.map((s: any) => ({
+          ...s,
+          thread_id: messageToThreadMap.get(s.message_id)
+        }));
+      }
+    }
+
     return NextResponse.json({ 
       answer,
-      sources: chunks?.map((c: any) => c.metadata) || []
+      sources
     });
   } catch (error: any) {
     console.error('Chat error:', error);

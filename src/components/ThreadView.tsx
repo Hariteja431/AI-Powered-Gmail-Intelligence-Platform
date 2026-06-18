@@ -8,6 +8,7 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
   const [messages, setMessages] = useState<any[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [summarizingMessageIds, setSummarizingMessageIds] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   const [instruction, setInstruction] = useState('');
@@ -42,6 +43,21 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
       console.error(e);
     } finally {
       setIsGeneratingSummary(false);
+    }
+  };
+
+  const summarizeMessage = async (messageId: string) => {
+    setSummarizingMessageIds(prev => ({ ...prev, [messageId]: true }));
+    try {
+      const res = await fetch(`/api/messages/${messageId}/summarize`, { method: 'POST' });
+      const data = await res.json();
+      if (data.summary) {
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, email_summary: data.summary } : m));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSummarizingMessageIds(prev => ({ ...prev, [messageId]: false }));
     }
   };
 
@@ -170,8 +186,35 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
                       <p className="text-xs text-gray-500">&lt;{msg.from_email}&gt;</p>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 font-medium">{new Date(msg.internal_date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-500 font-medium">{new Date(msg.internal_date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                    {!msg.email_summary && (
+                      <button 
+                        onClick={() => summarizeMessage(msg.id)}
+                        disabled={summarizingMessageIds[msg.id]}
+                        className="text-xs flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        title="Summarize this single email"
+                      >
+                        {summarizingMessageIds[msg.id] ? (
+                          <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        )}
+                        ✨ Summarize
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {msg.email_summary && (
+                  <div className="ml-13 mb-4 bg-purple-50/50 border border-purple-100 rounded-lg p-3">
+                    <h4 className="text-xs font-semibold text-purple-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                      Message Summary
+                    </h4>
+                    <p className="text-sm text-gray-700">{msg.email_summary}</p>
+                  </div>
+                )}
                 
                 <div className="text-sm text-gray-800 overflow-x-auto pl-13 pb-6 border-b border-gray-100">
                   {msg.body_html ? (

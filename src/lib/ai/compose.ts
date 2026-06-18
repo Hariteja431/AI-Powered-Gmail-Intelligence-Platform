@@ -30,3 +30,24 @@ DO NOT include email headers, Subject lines, or any Markdown formatting. Just ou
   const response = await generateContentWithFallback([{ role: 'user', parts: [{ text: prompt }] }]);
   return response.response.text();
 }
+
+export async function draftNewEmail(instruction: string) {
+  const prompt = `
+You are an expert AI email assistant writing on behalf of the user. 
+User's instruction for the new email: "${instruction}"
+
+Draft a complete, professional, and well-structured new email based on the instruction.
+Include an appropriate greeting, well-formatted paragraphs, and a professional sign-off.
+Provide your response in JSON format exactly like this:
+{
+  "subject": "A compelling and relevant subject line",
+  "body": "The plain text body of the email ready to be sent"
+}
+Make sure it is valid JSON and DO NOT wrap it in markdown code blocks. Just raw JSON.
+  `;
+
+  const response = await generateContentWithFallback([{ role: 'user', parts: [{ text: prompt }] }]);
+  let text = response.response.text();
+  text = text.replace(/^```json\s*/g, '').replace(/^```\s*/g, '').replace(/\s*```$/g, '').trim();
+  return JSON.parse(text);
+}

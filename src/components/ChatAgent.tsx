@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 
-export default function ChatAgent() {
+export default function ChatAgent({ onSourceClick }: { onSourceClick?: (threadId: string) => void }) {
   const [messages, setMessages] = useState<{role: 'user'|'assistant', content: string, sources?: any[]}[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -87,10 +87,15 @@ export default function ChatAgent() {
               </div>
               {m.sources && m.sources.length > 0 && (
                 <div className="text-[10px] text-gray-500 mt-1 ml-1 flex flex-wrap gap-1 max-w-full">
-                  {Array.from(new Set(m.sources.map(s => s.subject))).map((subj, idx) => (
-                    <span key={idx} className="bg-white border rounded px-1.5 py-0.5 truncate max-w-[250px]" title={subj as string}>
-                      {subj as string}
-                    </span>
+                  {Array.from(new Map(m.sources.map(s => [s.thread_id, s])).values()).map((src: any, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => onSourceClick && onSourceClick(src.thread_id)}
+                      className="bg-white hover:bg-gray-100 border rounded px-1.5 py-0.5 truncate max-w-[250px] cursor-pointer transition-colors text-left" 
+                      title={src.subject}
+                    >
+                      {src.subject}
+                    </button>
                   ))}
                 </div>
               )}

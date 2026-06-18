@@ -37,7 +37,8 @@ export function chunkText(text: string, maxTokens: number = 512): string[] {
   // Rough approximation: 1 token ~ 4 characters
   const maxLength = maxTokens * 4;
   const chunks: string[] = [];
-  
+  const overlapLength = 150; // 150 characters overlap
+
   if (!text) return chunks;
 
   let currentChunk = '';
@@ -48,14 +49,20 @@ export function chunkText(text: string, maxTokens: number = 512): string[] {
     if ((currentChunk.length + paragraph.length) > maxLength) {
       if (currentChunk.trim().length > 0) {
         chunks.push(currentChunk.trim());
+        // Start next chunk with overlap from the previous
+        const overlap = currentChunk.length > overlapLength 
+          ? '...' + currentChunk.slice(-overlapLength) 
+          : currentChunk;
+        currentChunk = overlap + '\n\n' + paragraph;
+      } else {
+        currentChunk = paragraph;
       }
-      currentChunk = paragraph;
     } else {
       currentChunk += (currentChunk.length > 0 ? '\n\n' : '') + paragraph;
     }
   }
 
-  if (currentChunk.trim().length > 0) {
+  if (currentChunk.trim().length > 0 && currentChunk !== '...') {
     chunks.push(currentChunk.trim());
   }
 

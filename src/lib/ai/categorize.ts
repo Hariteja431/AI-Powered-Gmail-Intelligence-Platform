@@ -22,7 +22,7 @@ export async function categorizeThreads(userId: string) {
     .select('id, gmail_thread_id, subject, snippet')
     .eq('user_id', userId)
     .is('category', null)
-    .limit(50); 
+    .limit(300); 
 
   if (error || !threads || threads.length === 0) {
     return { success: true, count: 0 };
@@ -50,26 +50,41 @@ ${JSON.stringify(batch, null, 2)}
       ), 3, 2000);
 
       let text = response.response.text();
-      if (text.startsWith('```')) {
-        text = text.replace(/^```[a-z]*\n|\n```$/g, '');
+      // Robust JSON extraction
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        text = match[0];
       }
 
       const results = JSON.parse(text) as { id: string, category: string }[];
       
       const validCategories = new Set(CATEGORIES);
+      
+      // Update one by one so one failure doesn't halt the rest
       for (const res of results) {
-        if (!validCategories.has(res.category)) {
-          res.category = 'Notifications';
+        try {
+          if (!validCategories.has(res.category)) {
+            res.category = 'Notifications'; // Fallback
+          }
+          await supabase
+            .from('threads')
+            .update({ category: res.category })
+            .eq('id', res.id);
+            
+          categorizedCount++;
+        } catch (updateErr) {
+          console.error(`Error updating thread ${res.id}:`, updateErr);
         }
-        await supabase
-          .from('threads')
-          .update({ category: res.category })
-          .eq('id', res.id);
-          
-        categorizedCount++;
       }
     } catch (err) {
       console.error('Categorization error for batch:', err);
+      // Fallback: If AI fails entirely, mark batch as Uncategorized so they don't block the queue
+      for (const t of batch) {
+        try {
+          await supabase.from('threads').update({ category: 'Uncategorized' }).eq('id', t.id);
+          categorizedCount++;
+        } catch (e) {}
+      }
     }
   }
 
