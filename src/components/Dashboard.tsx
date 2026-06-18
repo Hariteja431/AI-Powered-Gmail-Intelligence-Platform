@@ -250,7 +250,7 @@ export default function Dashboard({ user }: { user: { email: string } }) {
               {CATEGORIES.map(cat => (
                 <button
                   key={cat.name}
-                  onClick={() => { setActiveCategory(cat.name); setShowSidebar(false); }}
+                  onClick={() => { setActiveCategory(cat.name); setShowSidebar(false); setDigest(null); setSelectedThreadId(null); }}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     activeCategory === cat.name 
                       ? 'bg-blue-50 text-blue-700' 
@@ -305,7 +305,24 @@ export default function Dashboard({ user }: { user: { email: string } }) {
             </div>
           </div>
           <div className="flex-1 flex flex-col h-full bg-white relative min-w-0 overflow-hidden">
-                {digest && !selectedThreadId ? (
+                {generatingDigestType ? (
+                  <div className="absolute inset-0 z-20 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl border border-purple-100 flex flex-col items-center gap-5 animate-in zoom-in duration-200">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-purple-200 rounded-full blur-xl animate-pulse"></div>
+                        <svg className="animate-spin relative z-10 h-12 w-12 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-900 font-semibold text-lg mb-1">
+                          {generatingDigestType === 'inbox' ? 'Analyzing your Inbox...' : 'Summarizing Newsletters...'}
+                        </p>
+                        <p className="text-gray-500 text-sm max-w-xs">
+                          AI is reading through your emails to create a personalized summary. This may take a moment.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : digest && !selectedThreadId ? (
                   <div className="absolute inset-0 z-20 bg-white overflow-y-auto p-8">
                     <div className="max-w-3xl mx-auto">
                       <div className="flex justify-between items-center mb-8 border-b pb-4">
