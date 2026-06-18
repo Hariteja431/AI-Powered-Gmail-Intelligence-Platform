@@ -117,6 +117,36 @@ export default function Dashboard({ user }: { user: { email: string } }) {
     prevIsSyncing.current = isSyncing;
   }, [isSyncing, fetchThreads]);
 
+  // Handle native back/forward gestures to close modals instead of exiting the app
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state?.modal !== true) {
+        setSelectedThreadId(null);
+        setDigest(null);
+        setShowChat(false);
+        setShowSidebar(false);
+        setShowCompose(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Sync modal state to browser history
+  useEffect(() => {
+    const hasModal = !!(selectedThreadId || digest || showChat || showSidebar || showCompose);
+    
+    if (hasModal) {
+      if (window.history.state?.modal !== true) {
+        window.history.pushState({ modal: true }, '');
+      }
+    } else {
+      if (window.history.state?.modal === true) {
+        window.history.back();
+      }
+    }
+  }, [selectedThreadId, digest, showChat, showSidebar, showCompose]);
+
   const handleSync = async () => {
     setIsSyncing(true);
     setStatus('syncing');
