@@ -19,6 +19,8 @@ The system is built as a modern, serverless web application using the **Next.js 
 
 The database is built on **Supabase (PostgreSQL)**. 
 
+![Supabase Schema Visualizer](./supabase-schema-lhitlzkajpezqxdykewl.png)
+
 ### Tables & Relationships
 
 **1. `users` Table**
