@@ -18,6 +18,7 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
   const [sendSuccess, setSendSuccess] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'reply' | 'chat'>('reply');
+  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
   const [chatMessages, setChatMessages] = useState<{role: 'user'|'assistant', content: string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -272,23 +273,37 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
       {/* Bottom Action Area */}
       <div className="border-t border-gray-200 bg-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col">
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-4 pt-2 max-w-4xl mx-auto w-full">
+        <div className="flex border-b border-gray-200 px-4 pt-2 max-w-4xl mx-auto w-full items-center justify-between">
+          <div className="flex">
+            <button 
+              onClick={() => { setActiveTab('reply'); setIsPanelExpanded(true); }}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'reply' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              Reply with AI
+            </button>
+            <button 
+              onClick={() => { setActiveTab('chat'); setIsPanelExpanded(true); }}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'chat' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+              Chat about Email
+            </button>
+          </div>
           <button 
-            onClick={() => setActiveTab('reply')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'reply' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setIsPanelExpanded(!isPanelExpanded)}
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            title={isPanelExpanded ? "Collapse panel" : "Expand panel"}
           >
-            Reply with AI
-          </button>
-          <button 
-            onClick={() => setActiveTab('chat')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'chat' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-            Chat about Email
+            {isPanelExpanded ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>
+            )}
           </button>
         </div>
 
         {/* Tab Content */}
+        {isPanelExpanded && (
         <div className="p-4 max-w-4xl mx-auto w-full">
           {activeTab === 'reply' ? (
             <>
@@ -410,6 +425,7 @@ export default function ThreadView({ threadId, onClose }: { threadId: string, on
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
