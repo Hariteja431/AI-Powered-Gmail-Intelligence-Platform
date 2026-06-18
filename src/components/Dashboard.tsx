@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { toast } from 'sonner';
 import ThreadView from './ThreadView';
@@ -36,6 +36,7 @@ export default function Dashboard({ user }: { user: { email: string } }) {
   const [isCategorizing, setIsCategorizing] = useState(false);
   const [generatingDigestType, setGeneratingDigestType] = useState<'inbox' | 'newsletters' | null>(null);
   const [digest, setDigest] = useState<string | null>(null);
+  const prevIsSyncing = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -65,6 +66,10 @@ export default function Dashboard({ user }: { user: { email: string } }) {
         if (data.categorized !== undefined) {
           setCategorizedCount(data.categorized);
         }
+        // Auto-sync on very first login if inbox is empty
+        if (data.total === 0) {
+          fetch('/api/sync', { method: 'POST' }).catch(console.error);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -93,6 +98,24 @@ export default function Dashboard({ user }: { user: { email: string } }) {
     fetchThreads();
     setSelectedThreadId(null);
   }, [fetchThreads, messageCount]);
+
+  // Auto-categorize whenever a sync finishes
+  useEffect(() => {
+    if (prevIsSyncing.current === true && isSyncing === false) {
+      // Sync just completed, let's categorize any new emails automatically
+      fetch('/api/categorize', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.count > 0) {
+            setCategorizedCount(prev => prev + data.count);
+            fetchThreads();
+            toast.success(`Automatically categorized ${data.count} new emails!`);
+          }
+        })
+        .catch(console.error);
+    }
+    prevIsSyncing.current = isSyncing;
+  }, [isSyncing, fetchThreads]);
 
   const handleSync = async () => {
     setIsSyncing(true);
