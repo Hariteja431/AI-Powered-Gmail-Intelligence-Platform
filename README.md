@@ -57,7 +57,7 @@ Create a `.env.local` file in the root directory and populate it based on the pr
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase public anonymous key for client-side Auth.
 - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase secret service role key for bypassing RLS on server routes.
-- `TOKEN_ENCRYPTION_KEY`: A completely random 32-character string. This is used strictly by the server to symmetrically encrypt/decrypt the sensitive Google OAuth Refresh Tokens before storing them in the Supabase database.
+- `TOKEN_ENCRYPTION_KEY`: A completely random 64-character hex string (32 bytes). This is used strictly by the server to symmetrically encrypt/decrypt the sensitive Google OAuth Refresh Tokens before storing them in the Supabase database.
 - `GEMINI_API_KEYS`: A comma-separated list of Google Gemini API keys used for generation, chunking, and reasoning workflows.
 
 ### 4. Database Setup
