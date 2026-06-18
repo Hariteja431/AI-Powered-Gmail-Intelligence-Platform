@@ -38,8 +38,11 @@ User's instruction for the new email: "${instruction}"
 
 Draft a complete, professional, and well-structured new email based on the instruction.
 Include an appropriate greeting, well-formatted paragraphs, and a professional sign-off.
+Also, if the user explicitly mentions a recipient email address (e.g., "Send an email to john@example.com"), extract it.
+
 Provide your response in JSON format exactly like this:
 {
+  "to": "extracted email address, or empty string if none provided",
   "subject": "A compelling and relevant subject line",
   "body": "The plain text body of the email ready to be sent"
 }

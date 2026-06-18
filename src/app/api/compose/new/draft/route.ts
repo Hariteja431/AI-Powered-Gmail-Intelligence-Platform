@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
     const result = await draftNewEmail(instruction);
 
-    return NextResponse.json({ draft: result.body, subject: result.subject });
+    return NextResponse.json({ to: result.to, draft: result.body, subject: result.subject });
   } catch (error: any) {
     console.error('Error drafting new email:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
